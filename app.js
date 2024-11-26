@@ -3,7 +3,7 @@
 // @namespace   none
 // @match       https://www.fcbarca.com/la-rambla*
 // @grant       none
-// @version     0.1.0
+// @version     0.1.1
 // @author      misterio
 // @description Skrypt poprawiający osadzanie linków z X.com (Twitter)
 // @license     MIT
@@ -11,7 +11,7 @@
 
 /*jshint esversion: 11 */
 
-const TWITTER_REGEXP = new RegExp('.*twitter.com/.*/status/([0-9]+)');
+const TWITTER_REGEXP = new RegExp(/twitter.com\/.*\/status\/([0-9]+)/i);
 
 $(function() {
     console.log('Script initialized...');

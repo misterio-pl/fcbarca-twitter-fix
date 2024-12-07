@@ -3,7 +3,7 @@
 // @namespace   none
 // @match       https://www.fcbarca.com/la-rambla*
 // @grant       none
-// @version     0.2.0
+// @version     0.2.1
 // @author      misterio
 // @description Skrypt poprawiający osadzanie linków z X.com (Twitter)
 // @license     MIT
@@ -18,8 +18,19 @@ Map.prototype.getOrDefault = function(key, defaultValue) {
     return this.has(key) ? this.get(key) : defaultValue;
 }
 
-RegExp.prototype.reset = function() {
-    this.lastIndex = 0;
+Date.prototype.monthNames = [
+    "January", "February", "March",
+    "April", "May", "June",
+    "July", "August", "September",
+    "October", "November", "December"
+];
+
+Date.prototype.getMonthName = function() {
+    return this.monthNames[this.getMonth()];
+};
+
+Date.prototype.toTwitterDate = function() {
+    return `${this.getMonthName()} ${this.getDay()}, ${this.getFullYear()}`;
 }
 
 //
@@ -46,7 +57,7 @@ const LOG = new ConsoleLogger();
 // Twitter Service
 //
 class TwitterService {
-    static TWITTER_REGEXP = new RegExp(/^(https?:\/\/)?(x|twitter).com\/.*?\/status\/([0-9]+)[^\s]+$/i);
+    static TWITTER_REGEXP = new RegExp(/^((https?:\/\/)?(x|twitter).com\/(.*?)\/status\/([0-9]+))[^\s]*$/i);
     static TWITTER_REGEXP_PARTIAL = new RegExp(/(x|twitter).com\/.*?\/status\/([0-9]+)/i);
 
     #nodeHandlerMap;
@@ -111,7 +122,7 @@ class TwitterService {
         }
 
         if (!TwitterService.TWITTER_REGEXP_PARTIAL.test(text)) {
-            return; // There is nothing to correct.
+            return; // There is nothing to correct
         }
 
         LOG.debug('Found node that requires correction.');
@@ -143,18 +154,26 @@ class TwitterService {
     }
 
     #tryReparseTweetsInternal(text, $node) {
+        const self = this;
+
         if (TwitterService.TWITTER_REGEXP.test(text)) {
             var matchedGroup = text.match(TwitterService.TWITTER_REGEXP);
-            var matchedURL = matchedGroup[0].startsWith('http') ? matchedGroup[0] : 'https://' + matchedGroup[0];
-            var matchedID = matchedGroup[3];
+            var matchedLink = matchedGroup[0];
+            var matchedURL = matchedGroup[1].startsWith('http') ? matchedGroup[1] : 'https://' + matchedGroup[1];
+            var matchedUsername = matchedGroup[4];
+            var matchedTweetID = matchedGroup[5];
 
-            LOG.info('Matched tweet with ID: {' + matchedID + '} and URL: {' + matchedURL + '}.');
+            LOG.info('Matched tweet from link: {' + matchedLink + '} with ID: {' + matchedTweetID + '} and URL: {' + matchedURL + '}.');
             $.ajax({
                 url: 'https://publish.twitter.com/oembed?url=' + matchedURL,
                 dataType: 'jsonp',
                 success: function(data) {
-                    LOG.debug('Succeeded at resolving tweet with ID: {' + matchedID + '}.');
+                    LOG.debug('Succeeded at resolving tweet with ID: {' + matchedTweetID + '}.');
                     $node.replaceWith(data.html);
+                },
+                error: function($xhr, textStatus, errorThrown) {
+                    LOG.debug('Failed at resolving tweet with ID: {' + matchedTweetID + '}. Using fallback instead.');
+                    $node.replaceWith(self.#buildTweetFallback(matchedTweetID, matchedUsername));
                 }
             });
         }
@@ -162,6 +181,18 @@ class TwitterService {
 
     #reparseTweetsFallback(node) {
         LOG.warn('Unhandled NodeType: {' + node.nodeType + '}.');
+    }
+
+    #buildTweetFallback(tweetID, username) {
+        var currentDate = new Date().toTwitterDate();
+
+        // FIXME: It would be useful to add readable username, but at the moment I have no idea how to do so...
+        return `
+            <blockquote class="twitter-tweet">
+                <p lang="en" dir="ltr">Hmm...this page doesn’t exist. Try searching for something else.</p>
+                &mdash; (@${username}) <a href="https://twitter.com/${username}/status/${tweetID}?ref_src=twsrc^tfw">${currentDate}</a>
+            </blockquote>
+        `;
     }
 }
 

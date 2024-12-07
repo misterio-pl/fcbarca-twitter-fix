@@ -3,7 +3,7 @@
 // @namespace   none
 // @match       https://www.fcbarca.com/la-rambla*
 // @grant       none
-// @version     0.1.1
+// @version     0.2.0
 // @author      misterio
 // @description Skrypt poprawiający osadzanie linków z X.com (Twitter)
 // @license     MIT
@@ -11,73 +11,180 @@
 
 /*jshint esversion: 11 */
 
-const TWITTER_REGEXP = new RegExp(/twitter.com\/.*\/status\/([0-9]+)/i);
+//
+// Extensions
+//
+Map.prototype.getOrDefault = function(key, defaultValue) {
+    return this.has(key) ? this.get(key) : defaultValue;
+}
 
-$(function() {
-    console.log('Script initialized...');
+RegExp.prototype.reset = function() {
+    this.lastIndex = 0;
+}
 
-    var list = document.getElementById('comments__list');
+//
+// Very simple logger to avoid unnecessary dependency for now...
+//
+class ConsoleLogger {
+    constructor() {}
 
-    // Parse comments that were loaded during sync-request
-    var $nodes = $(list).find('.rambla-item');
-    $nodes.each(function() {
-        console.log('Trying to reparse comment...');
+    debug(msg) {
+        console.debug('DEBUG: ' + msg);
+    }
 
-        var $node = $(this);
-        reparseTweetInComment($node);
-    });
+    info(msg) {
+        console.log('INFO: ' + msg);
+    }
 
-    // Create observer to parse comments loaded async-request
-    var observer = new MutationObserver(function(mutationList) {
-        mutationList.forEach(function(mutation) {
-            var $nodes = $(mutation.addedNodes ?? []);
+    warn(msg) {
+        console.warn('WARN: ' + msg);
+    }
+}
+const LOG = new ConsoleLogger();
 
-            $nodes.each(function() {
-                var $node = $(this);
-                if ($node.hasClass('rambla-item')) {
-                    console.log('Trying to reparse comment...');
+//
+// Twitter Service
+//
+class TwitterService {
+    static TWITTER_REGEXP = new RegExp(/^(https?:\/\/)?(x|twitter).com\/.*?\/status\/([0-9]+)[^\s]+$/i);
+    static TWITTER_REGEXP_PARTIAL = new RegExp(/(x|twitter).com\/.*?\/status\/([0-9]+)/i);
 
-                    reparseTweetInComment($node);
-                }
-            });
-        });
-    });
+    #nodeHandlerMap;
 
-    // Configuration of the observer
-    var config = {
-        attributes: true,
-        childList: true,
-        characterData: true,
-    };
+    constructor() {
+        const self = this;
 
-    // Pass in the target node, as well as the observer options
-    observer.observe(list, config);
-});
+        self.#nodeHandlerMap = new Map([
+            [Node.ELEMENT_NODE, node => self.#reparseTweetsInElementNode(node)],
+            [Node.TEXT_NODE, node => self.#reparseTweetsInTextNode(node)],
+        ]);
+    }
 
-function reparseTweetInComment($comment) {
-    var $contentNode = $comment.find('.comment__content > p');
+    reparseTweetsInComments($commentList) {
+        const self = this;
 
-    if (TWITTER_REGEXP.test($contentNode.text())) {
-        var $textNodeList = $contentNode.contents().filter(function() {
-            return this.nodeType === 3; //Node.TEXT_NODE
-        });
-
-        $textNodeList.each(function(index, element) {
-            var text = $(element).text().trim();
-            if (TWITTER_REGEXP.test(text)) {
-                console.log('Matched Twitter ID...');
-
-                var tweetId = text.match(TWITTER_REGEXP)[1];
-                $(element).replaceWith(createTweet(tweetId));
+        $commentList.each(function() {
+            var $comment = $(this);
+            if ($comment.hasClass('rambla-item')) {
+                self.reparseTweetsInComment($comment);
             }
         });
     }
+
+    reparseTweetsInComment($comment) {
+        const self = this;
+
+        LOG.debug('Parsing comment with ID: {' + $comment.attr('data-comment-id') + '}.');
+
+        // Phase 1: Try to fix message layout
+        var $contentNodeList = $comment.find('.comment__content > p');
+        $contentNodeList.each(function() {
+            var $contentNode = $(this);
+
+            $contentNode.contents().each(function() {
+                self.#tryFixCommentLayout(this);
+            });
+        });
+
+        // Phase 2: Embedding unloaded tweets
+        var $contentNodeList = $comment.find('.comment__content > p');
+        $contentNodeList.each(function() {
+            var $contentNode = $(this);
+
+            LOG.debug('Comment has {' + $contentNode.contents().length + '} node(s) to parse.');
+            $contentNode.contents().each(function() {
+                self.#nodeHandlerMap.getOrDefault(this.nodeType, node => self.#reparseTweetsFallback(node))(this);
+            });
+        });
+    }
+
+    #tryFixCommentLayout(node) {
+        if (node.nodeType !== Node.TEXT_NODE) {
+            return; // Only TEXT_NODE need this fix
+        }
+
+        var $node = $(node);
+        var text = $node.text().trim();
+
+        if (TwitterService.TWITTER_REGEXP.test(text)) {
+            return; // Node is correct
+        }
+
+        if (!TwitterService.TWITTER_REGEXP_PARTIAL.test(text)) {
+            return; // There is nothing to correct.
+        }
+
+        LOG.debug('Found node that requires correction.');
+        var tokenList = text.split(/\s+/).map(function(token) {
+            if (TwitterService.TWITTER_REGEXP.test(token)) {
+                return '<br>' + token + '<br>';
+            }
+
+            return token;
+        });
+
+        $node.replaceWith(tokenList.join(' '));
+    }
+
+    #reparseTweetsInElementNode(node) {
+        const self = this;
+
+        var $node = $(node);
+        if ($node.hasClass('external-link')) {
+            self.#tryReparseTweetsInternal($node.attr('href'), $node);
+        }
+    }
+
+    #reparseTweetsInTextNode(node) {
+        const self = this;
+
+        var $node = $(node);
+        self.#tryReparseTweetsInternal($node.text().trim(), $node);
+    }
+
+    #tryReparseTweetsInternal(text, $node) {
+        if (TwitterService.TWITTER_REGEXP.test(text)) {
+            var matchedGroup = text.match(TwitterService.TWITTER_REGEXP);
+            var matchedURL = matchedGroup[0].startsWith('http') ? matchedGroup[0] : 'https://' + matchedGroup[0];
+            var matchedID = matchedGroup[3];
+
+            LOG.info('Matched tweet with ID: {' + matchedID + '} and URL: {' + matchedURL + '}.');
+            $.ajax({
+                url: 'https://publish.twitter.com/oembed?url=' + matchedURL,
+                dataType: 'jsonp',
+                success: function(data) {
+                    LOG.debug('Succeeded at resolving tweet with ID: {' + matchedID + '}.');
+                    $node.replaceWith(data.html);
+                }
+            });
+        }
+    }
+
+    #reparseTweetsFallback(node) {
+        LOG.warn('Unhandled NodeType: {' + node.nodeType + '}.');
+    }
 }
 
-function createTweet(tweetId) {
-    return `
-    <blockquote class="twitter-tweet">
-      <a href="https://twitter.com/username/status/${tweetId}"></a>
-    </blockquote>
-    `;
-}
+//
+// Main Script
+//
+$(function() {
+    LOG.info('Fcbarca.com Twitter Fix Script initialized...');
+
+    var twitterService = new TwitterService();
+
+    // Parse comments that were loaded during sync-request
+    var $commentList = $("#comments__list").find('.rambla-item');
+    twitterService.reparseTweetsInComments($commentList);
+
+    // Create observer to parse comments loaded on async-request
+    var observer = new MutationObserver(function(mutationList) {
+        mutationList.forEach(function(mutation) {
+            var $commentList = $(mutation.addedNodes ?? []);
+            twitterService.reparseTweetsInComments($commentList);
+        });
+    });
+
+    // Pass in the target node, as well as the observer options
+    observer.observe(document.getElementById('comments__list'), {childList: true});
+});

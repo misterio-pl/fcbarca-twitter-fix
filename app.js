@@ -3,7 +3,7 @@
 // @namespace   none
 // @match       https://www.fcbarca.com/la-rambla*
 // @grant       none
-// @version     0.2.1
+// @version     0.2.2
 // @author      misterio
 // @description Skrypt poprawiający osadzanie linków z X.com (Twitter)
 // @license     MIT
@@ -18,19 +18,18 @@ Map.prototype.getOrDefault = function(key, defaultValue) {
     return this.has(key) ? this.get(key) : defaultValue;
 }
 
-Date.prototype.monthNames = [
-    "January", "February", "March",
-    "April", "May", "June",
-    "July", "August", "September",
-    "October", "November", "December"
-];
+Date.prototype.monthNameList = [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
 
 Date.prototype.getMonthName = function() {
-    return this.monthNames[this.getMonth()];
+    return this.monthNameList[this.getMonth()];
 };
 
+Date.prototype.getDayOfMonth = function() {
+    return this.getDate();
+}
+
 Date.prototype.toTwitterDate = function() {
-    return `${this.getMonthName()} ${this.getDay()}, ${this.getFullYear()}`;
+    return `${this.getMonthName()} ${this.getDayOfMonth()}, ${this.getFullYear()}`;
 }
 
 //
@@ -57,8 +56,8 @@ const LOG = new ConsoleLogger();
 // Twitter Service
 //
 class TwitterService {
-    static TWITTER_REGEXP = new RegExp(/^((https?:\/\/)?(x|twitter).com\/(.*?)\/status\/([0-9]+))[^\s]*$/i);
-    static TWITTER_REGEXP_PARTIAL = new RegExp(/(x|twitter).com\/.*?\/status\/([0-9]+)/i);
+    static TWITTER_REGEXP_EXACT = new RegExp(/^((https?:\/\/)?(x|twitter).com\/(.*?)\/status\/([0-9]+))[^\s]*$/i);
+    static TWITTER_REGEXP_PARTIAL = new RegExp(/(x|twitter).com\/.*?\/status\/[0-9]+/i);
 
     #nodeHandlerMap;
 
@@ -117,17 +116,17 @@ class TwitterService {
         var $node = $(node);
         var text = $node.text().trim();
 
-        if (TwitterService.TWITTER_REGEXP.test(text)) {
-            return; // Node is correct
-        }
-
         if (!TwitterService.TWITTER_REGEXP_PARTIAL.test(text)) {
             return; // There is nothing to correct
         }
 
+        if (TwitterService.TWITTER_REGEXP_EXACT.test(text)) {
+            return; // Node is correct
+        }
+
         LOG.debug('Found node that requires correction.');
         var tokenList = text.split(/\s+/).map(function(token) {
-            if (TwitterService.TWITTER_REGEXP.test(token)) {
+            if (TwitterService.TWITTER_REGEXP_EXACT.test(token)) {
                 return '<br>' + token + '<br>';
             }
 
@@ -156,8 +155,8 @@ class TwitterService {
     #tryReparseTweetsInternal(text, $node) {
         const self = this;
 
-        if (TwitterService.TWITTER_REGEXP.test(text)) {
-            var matchedGroup = text.match(TwitterService.TWITTER_REGEXP);
+        if (TwitterService.TWITTER_REGEXP_EXACT.test(text)) {
+            var matchedGroup = text.match(TwitterService.TWITTER_REGEXP_EXACT);
             var matchedLink = matchedGroup[0];
             var matchedURL = matchedGroup[1].startsWith('http') ? matchedGroup[1] : 'https://' + matchedGroup[1];
             var matchedUsername = matchedGroup[4];
@@ -217,5 +216,5 @@ $(function() {
     });
 
     // Pass in the target node, as well as the observer options
-    observer.observe(document.getElementById('comments__list'), {childList: true});
+    observer.observe(document.getElementById('comments__list'), {childList: true, subtree: true});
 });

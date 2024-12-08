@@ -4,6 +4,11 @@ Skrypt poprawiający osadzanie linków z X.com (Twitter).
 
 ## Changelog
 
+### 0.2.2
+- Poprawienie regresji w związku z ograniczeniem opcji observer-a (przestało parsować "Pokaż X odpowiedzi")
+- Poprawka w budowania daty dla zaślepki, gdy nie można wczytać Tweeta
+- Drobny refactoring kodu, który nie zmienia nic funkcjonalnie (optymalizacja)
+
 ### 0.2.1
 - Drobne poprawki do wyrażenia regularnego (między innymi poprawienie odczytywania identyfikatora Tweeta)
 - Obsłużenie wczytywania Tweetów postaci twitter.com/user/status/id/photo/1 (uwzględnienie /photo/1)

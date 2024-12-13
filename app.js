@@ -3,7 +3,7 @@
 // @namespace   none
 // @match       https://www.fcbarca.com/la-rambla*
 // @grant       none
-// @version     0.2.2
+// @version     0.2.3-SNAPSHOT
 // @author      misterio
 // @description Skrypt poprawiający osadzanie linków z X.com (Twitter)
 // @license     MIT
@@ -12,13 +12,13 @@
 /*jshint esversion: 11 */
 
 //
-// Extensions
+// STL Extensions
 //
 Map.prototype.getOrDefault = function(key, defaultValue) {
     return this.has(key) ? this.get(key) : defaultValue;
 }
 
-Date.prototype.monthNameList = [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+Date.prototype.monthNameList = [ 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December' ];
 
 Date.prototype.getMonthName = function() {
     return this.monthNameList[this.getMonth()];
@@ -31,6 +31,13 @@ Date.prototype.getDayOfMonth = function() {
 Date.prototype.toTwitterDate = function() {
     return `${this.getMonthName()} ${this.getDayOfMonth()}, ${this.getFullYear()}`;
 }
+
+//
+// jQuery Extensions
+//
+$.fn.normalizedText = function() {
+    return this.text().trim();
+};
 
 //
 // Very simple logger to avoid unnecessary dependency for now...
@@ -74,20 +81,20 @@ class TwitterService {
         const self = this;
 
         $commentList.each(function() {
-            var $comment = $(this);
-            if ($comment.hasClass('rambla-item')) {
-                self.reparseTweetsInComment($comment);
+            var $commentNode = $(this);
+            if ($commentNode.hasClass('comment') && $commentNode.hasClass('rambla-item')) {
+                self.reparseTweetsInComment($commentNode);
             }
         });
     }
 
-    reparseTweetsInComment($comment) {
+    reparseTweetsInComment($commentNode) {
         const self = this;
 
-        LOG.debug('Parsing comment with ID: {' + $comment.attr('data-comment-id') + '}.');
+        LOG.debug('Parsing comment with ID: {' + $commentNode.attr('data-comment-id') + '}.');
 
         // Phase 1: Try to fix message layout
-        var $contentNodeList = $comment.find('.comment__content > p');
+        var $contentNodeList = $commentNode.find('.comment__content > p');
         $contentNodeList.each(function() {
             var $contentNode = $(this);
 
@@ -97,7 +104,7 @@ class TwitterService {
         });
 
         // Phase 2: Embedding unloaded tweets
-        var $contentNodeList = $comment.find('.comment__content > p');
+        var $contentNodeList = $commentNode.find('.comment__content > p');
         $contentNodeList.each(function() {
             var $contentNode = $(this);
 
@@ -114,7 +121,7 @@ class TwitterService {
         }
 
         var $node = $(node);
-        var text = $node.text().trim();
+        var text = $node.normalizedText();
 
         if (!TwitterService.TWITTER_REGEXP_PARTIAL.test(text)) {
             return; // There is nothing to correct
@@ -171,7 +178,7 @@ class TwitterService {
                     $node.replaceWith(data.html);
                 },
                 error: function($xhr, textStatus, errorThrown) {
-                    LOG.debug('Failed at resolving tweet with ID: {' + matchedTweetID + '}. Using fallback instead.');
+                    LOG.debug('Failed with: {' + textStatus + '} at resolving tweet with ID: {' + matchedTweetID + '}. Using fallback instead.');
                     $node.replaceWith(self.#buildTweetFallback(matchedTweetID, matchedUsername));
                 }
             });
@@ -204,7 +211,7 @@ $(function() {
     var twitterService = new TwitterService();
 
     // Parse comments that were loaded during sync-request
-    var $commentList = $("#comments__list").find('.rambla-item');
+    var $commentList = $('#comments__list').find('div.comment.rambla-item');
     twitterService.reparseTweetsInComments($commentList);
 
     // Create observer to parse comments loaded on async-request

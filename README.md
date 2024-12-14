@@ -4,6 +4,9 @@ Skrypt poprawiający osadzanie linków z X.com (Twitter).
 
 ## Changelog
 
+### 0.3.0
+- Dodanie przycisku informującego o tym, że dany post został poprawiony oraz możliwość wyświetlenia wpisu sprzed poprawki
+
 ### 0.2.2
 - Poprawienie regresji w związku z ograniczeniem opcji observer-a (przestało parsować "Pokaż X odpowiedzi")
 - Poprawka w budowania daty dla zaślepki, gdy nie można wczytać Tweeta

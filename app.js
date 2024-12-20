@@ -4,7 +4,7 @@
 // @match       https://www.fcbarca.com/la-rambla*
 // @require     https://unpkg.com/tippy.js@2.6.0/dist/tippy.min.js
 // @grant       none
-// @version     0.3.0
+// @version     0.3.1
 // @author      misterio
 // @description Skrypt poprawiający osadzanie linków z X.com (Twitter)
 // @license     MIT
@@ -116,31 +116,39 @@ class UIService {
     #createCss() {
         return `
             <style type="text/css">
-                .comments__list > .comment > .comment__meta .links__item .twitter-button {
-                    padding: 0;
-                    display: none;
+                div#comments__list {
+                    & div.comment > div.comment__meta li.dynamic__item {
+                        display: none;
+
+                        & .twitter-button {
+                            padding: 0;
+                            display: block;
+
+                            & .icon {
+                                top: -.2rem;
+                                color: #8d8d8d;
+                                width: 1.5rem;
+                                height: 1.5rem;
+                                display: block;
+                                position: relative;
+                            }
+
+                            & .icon-active {
+                                color: #a21d3d;
+                            }
+                        }
+                    }
+
+                    & div.comment__fixed > div.comment__meta li.dynamic__item {
+                        display: inline-block;
+                    }
                 }
 
-                .comments__list > .comment__fixed > .comment__meta .links__item .twitter-button {
-                    display: block;
-                }
-            
-                .comments__list > .comment > .comment__meta .links__item .twitter-button .icon {
-                    top: -.2rem;
-                    color: #8d8d8d;
-                    width: 1.5rem;
-                    height: 1.5rem;
-                    display: block;
-                    position: relative;
-                }
-            
-                .comments__list > .comment > .comment__meta .links__item .twitter-button .icon.icon-active {
-                    color: #a21d3d;
-                }
-            
                 @media (max-width: 575.98px) {
-                    .comments__list > .comment > .comment__meta .links__item .twitter-button .icon {
-                        top:-.1rem;
+                    div#comments__list {
+                        & div.comment > div.comment__meta li.dynamic__item .twitter-button .icon {
+                            top:-.1rem;
+                        }
                     }
                 }
             </style>
@@ -197,24 +205,17 @@ class TwitterService {
         self.#originalNodeMap.set(commentID, $contentNode.clone())
 
         // Phase 1: Try to fix message layout
-        var $contentNodeList = $contentNode.children('p');
+        var $contentNodeList = $.merge($contentNode.children('p').contents(), $contentNode.contents().filter(':not(p)'));
         $contentNodeList.each(function() {
-            var $contentNode = $(this);
-
-            $contentNode.contents().each(function() {
-                self.#tryFixCommentLayout(this);
-            });
+            self.#tryFixCommentLayout(this);
         });
 
         // Phase 2: Embedding unloaded tweets
-        var $contentNodeList = $contentNode.children('p');
-        $contentNodeList.each(function() {
-            var $contentNode = $(this);
+        var $contentNodeList = $.merge($contentNode.children('p').contents(), $contentNode.contents().filter(':not(p)'));
 
-            LOG.debug('Comment has {' + $contentNode.contents().length + '} node(s) to parse.');
-            $contentNode.contents().each(function() {
-                self.#nodeHandlerMap.getOrDefault(this.nodeType, (node, $commentNode) => self.#reparseTweetsFallback(node, $commentNode))(this, $commentNode);
-            });
+        LOG.debug('Comment has {' + $contentNodeList.length + '} node(s) to parse.');
+        $contentNodeList.each(function() {
+            self.#nodeHandlerMap.getOrDefault(this.nodeType, (node, $commentNode) => self.#reparseTweetsFallback(node, $commentNode))(this, $commentNode);
         });
 
         // FIXME: This has to be planned some other way... Maybe Controller/ActionService/Presenter?
@@ -230,7 +231,7 @@ class TwitterService {
                 }
             })
         } else {
-            LOG.info('Wywalam!');
+            LOG.debug('Remove unused node.');
             self.#originalNodeMap.delete(commentID);
         }
     }

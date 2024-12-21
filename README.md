@@ -4,6 +4,9 @@ Skrypt poprawiający osadzanie linków z X.com (Twitter).
 
 ## Changelog
 
+### 0.3.2
+- Poprawka do osadzania w rzadkim scenariuszu, poprzednie podejście zawierało błąd.
+
 ### 0.3.1
 - Poprawienie nadmiarowo wyświetlającej się ikony, mimo że Tweet nie został poprawiony (optymalizacja CSS przy okazji)
 - Obsłużenie rzadkiego scenariusza, gdzie tylko jeden z Tweetów się nie załadował (ten drugi).

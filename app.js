@@ -4,7 +4,7 @@
 // @match       https://www.fcbarca.com/la-rambla*
 // @require     https://unpkg.com/tippy.js@2.6.0/dist/tippy.min.js
 // @grant       none
-// @version     0.3.1
+// @version     0.3.2
 // @author      misterio
 // @description Skrypt poprawiający osadzanie linków z X.com (Twitter)
 // @license     MIT
@@ -38,6 +38,16 @@ Date.prototype.toTwitterDate = function() {
 //
 $.fn.normalizedText = function() {
     return this.text().trim();
+};
+
+$.fn.childrenWithText = function(selector) {
+    return this.contents().filter(function() {
+        if (this.nodeType === Node.ELEMENT_NODE) {
+            return $(this).is(selector);
+        }
+
+        return this.nodeType === Node.TEXT_NODE;
+    });
 };
 
 //
@@ -205,13 +215,13 @@ class TwitterService {
         self.#originalNodeMap.set(commentID, $contentNode.clone())
 
         // Phase 1: Try to fix message layout
-        var $contentNodeList = $.merge($contentNode.children('p').contents(), $contentNode.contents().filter(':not(p)'));
+        var $contentNodeList = $.merge($contentNode.children('p').contents(), $contentNode.childrenWithText(':not(p)'));
         $contentNodeList.each(function() {
             self.#tryFixCommentLayout(this);
         });
 
         // Phase 2: Embedding unloaded tweets
-        var $contentNodeList = $.merge($contentNode.children('p').contents(), $contentNode.contents().filter(':not(p)'));
+        var $contentNodeList = $.merge($contentNode.children('p').contents(), $contentNode.childrenWithText(':not(p)'));
 
         LOG.debug('Comment has {' + $contentNodeList.length + '} node(s) to parse.');
         $contentNodeList.each(function() {

@@ -4,6 +4,28 @@ Skrypt poprawiający osadzanie linków z X.com (Twitter).
 
 ## Changelog
 
+abc:
+
+<div style="display: flex; justify-content: center; align-items:center;">
+  <div align="center">
+
+| **A** |                    $\kern{160px} 243,000,000 \kern{160px}$                    |
+|:-----:|:-----------------------------------------------------------------------------:|
+| **B** |                         $64 \times 243 \times 15,625$                         |
+| **C** |                          $2^6 \times 3^5 \times 5^6$                          |
+| **D** | $\matrix{ 6 & 5 & 6 \cr \downarrow & \downarrow & \downarrow \cr 0 & = & 0 }$ |
+| **E** |                                    $0 = 0$                                    |
+
+<sub>The arithmetical formula 'zero equals zero' has the Godel number 243 million.<br>Reading down from A to E, the illustration shows how the number is translated<br>into the expression it represents; reading up, how the number for the formula is derived.</sub>
+  <center><b>TABLE 4</b></center>
+  </div>
+</div>
+
+adasda
+* równanie zdefinowane jako: $ϑ(x) = \sum\limits_{n \in ℤ}{e^{-πn²x}}$
+* dowiedzioną przez powyższy lemat zależność: $\sum\limits_{n \in ℤ}{f(n)} = \sum\limits_{k \in ℤ}{\int\limits_{-∞}^{+∞}{f(t) · e^{-2πikt} dt}}$
+
+
 ### 0.3.2
 - Poprawka do osadzania w rzadkim scenariuszu, poprzednie podejście zawierało błąd.
 

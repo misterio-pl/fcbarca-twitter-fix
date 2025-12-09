@@ -4,6 +4,17 @@ Skrypt poprawiający osadzanie linków z X.com (Twitter).
 
 ## Changelog
 
+abc:
+
+$$
+\sum\limits_{n \in ℤ}{f(n)} = \sum\limits_{k \in ℤ}\int\limits_{-∞}^{+∞}{f(y) · e^{-2πiky} dy}
+$$
+
+adasda
+* równanie zdefinowane jako: $ϑ(x) = \sum\limits_{n \in ℤ}{e^{-πn²x}}$
+* dowiedzioną przez powyższy lemat zależność: $\sum\limits_{n \in ℤ}{f(n)} = \sum\limits_{k \in ℤ}{\int\limits_{-∞}^{+∞}{f(t) · e^{-2πikt} dt}}$
+
+
 ### 0.3.2
 - Poprawka do osadzania w rzadkim scenariuszu, poprzednie podejście zawierało błąd.
 
